@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mood Tune — מצא את השיר של הרגע</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg-1: #0a0612;
+    --bg-2: #1a0a2e;
+    --accent: #ff3d7f;
+    --accent-2: #b537f2;
+    --accent-3: #00d9ff;
+    --text: #f5eeff;
+    --text-dim: rgba(245, 238, 255, 0.6);
+    --glass: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+  }
+
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg-1);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Animated gradient background */
+  .bg-gradient {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(181, 55, 242, 0.35) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(255, 61, 127, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(0, 217, 255, 0.15) 0%, transparent 60%),
+      var(--bg-1);
+    z-index: -2;
+    animation: bgShift 20s ease infinite;
+  }
+
+  @keyframes bgShift {
+    0%, 100% { filter: hue-rotate(0deg); }
+    50% { filter: hue-rotate(30deg); }
+  }
+
+  /* Noise texture */
+  .noise {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.04;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Floating music notes */
+  .float-note {
+    position: fixed;
+    color: rgba(255, 255, 255, 0.06);
+    font-size: 40px;
+    pointer-events: none;
+    animation: float 15s linear infinite;
+    z-index: -1;
+  }
+  .float-note:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 18s; }
+  .float-note:nth-child(2) { left: 30%; animation-delay: 3s; animation-duration: 22s; font-size: 60px; }
+  .float-note:nth-child(3) { left: 60%; animation-delay: 6s; animation-duration: 20s; }
+  .float-note:nth-child(4) { left: 85%; animation-delay: 9s; animation-duration: 16s; font-size: 50px; }
+
+  @keyframes float {
+    0% { top: 110%; transform: translateX(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: -10%; transform: translateX(50px) rotate(360deg); opacity: 0; }
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    margin-bottom: 60px;
+    animation: fadeInUp 0.8s ease;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 6px 16px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    margin-bottom: 24px;
+    backdrop-filter: blur(10px);
+    text-transform: uppercase;
+    color: var(--accent-3);
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(48px, 8vw, 80px);
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-style: italic;
+  }
+
+  .subtitle {
+    font-size: 17px;
+    color: var(--text-dim);
+    font-weight: 300;
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* Equalizer animation */
+  .eq {
+    display: inline-flex;
+    gap: 4px;
+    align-items: flex-end;
+    height: 20px;
+    margin: 0 8px;
+    vertical-align: -3px;
+  }
+  .eq span {
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: eqBounce 1s ease-in-out infinite;
+  }
+  .eq span:nth-child(1) { animation-delay: 0s; }
+  .eq span:nth-child(2) { animation-delay: 0.2s; }
+  .eq span:nth-child(3) { animation-delay: 0.4s; }
+  .eq span:nth-child(4) { animation-delay: 0.1s; }
+
+  @keyframes eqBounce {
+    0%, 100% { height: 4px; }
+    50% { height: 20px; }
+  }
+
+  /* Question cards */
+  .question {
+    margin-bottom: 36px;
+    animation: fadeInUp 0.6s ease backwards;
+  }
+  .question:nth-child(1) { animation-delay: 0.1s; }
+  .question:nth-child(2) { animation-delay: 0.2s; }
+  .question:nth-child(3) { animation-delay: 0.3s; }
+  .question:nth-child(4) { animation-delay: 0.4s; }
+  .question:nth-child(5) { animation-delay: 0.5s; }
+
+  .q-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 4px;
+    font-style: italic;
+    letter-spacing: 0.1em;
+  }
+
+  .q-text {
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 18px;
+    color: var(--text);
+  }
+
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .opt {
+    padding: 12px 22px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .opt::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: -1;
+  }
+
+  .opt:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 24px rgba(181, 55, 242, 0.15);
+  }
+
+  .opt.selected {
+    border-color: transparent;
+    color: #fff;
+    font-weight: 500;
+    box-shadow: 0 8px 32px rgba(255, 61, 127, 0.4);
+  }
+  .opt.selected::before { opacity: 1; }
+
+  /* CTA */
+  .cta {
+    display: none;
+    width: 100%;
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    border: none;
+    border-radius: 100px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 0.05em;
+    box-shadow: 0 12px 40px rgba(255, 61, 127, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .cta.show { display: block; }
+  .cta:hover { transform: translateY(-3px); box-shadow: 0 18px 50px rgba(255, 61, 127, 0.5); }
+  .cta:active { transform: translateY(-1px); }
+  .cta:disabled { opacity: 0.6; cursor: wait; animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 12px 40px rgba(255, 61, 127, 0.3); }
+    50% { box-shadow: 0 12px 50px rgba(255, 61, 127, 0.6); }
+  }
+
+  /* Loading */
+  .loading { display: none; text-align: center; padding: 60px 20px; animation: fadeIn 0.4s; }
+  .loading.show { display: block; }
+  .loading-eq {
+    display: inline-flex;
+    gap: 6px;
+    align-items: flex-end;
+    height: 50px;
+    margin-bottom: 20px;
+  }
+  .loading-eq span {
+    width: 6px;
+    background: linear-gradient(to top, var(--accent), var(--accent-2));
+    border-radius: 3px;
+    animation: eqBounce 0.9s ease-in-out infinite;
+  }
+  .loading-eq span:nth-child(1) { animation-delay: 0s; }
+  .loading-eq span:nth-child(2) { animation-delay: 0.15s; }
+  .loading-eq span:nth-child(3) { animation-delay: 0.3s; }
+  .loading-eq span:nth-child(4) { animation-delay: 0.45s; }
+  .loading-eq span:nth-child(5) { animation-delay: 0.2s; }
+  .loading p { color: var(--text-dim); font-size: 16px; }
+
+  /* Result card */
+  .result {
+    display: none;
+    animation: fadeInUp 0.6s ease;
+    text-align: center;
+    padding: 50px 30px;
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    position: relative;
+    overflow: hidden;
+  }
+  .result.show { display: block; }
+
+  .result::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, var(--accent), var(--accent-2), var(--accent-3), var(--accent));
+    opacity: 0.1;
+    animation: rotate 8s linear infinite;
+    z-index: -1;
+  }
+
+  @keyframes rotate {
+    to { transform: rotate(360deg); }
+  }
+
+  .result-label {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--accent-3);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .result-song {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(32px, 5vw, 44px);
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+
+  .result-artist {
+    font-size: 20px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    font-weight: 300;
+  }
+  .result-artist .year {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .result-reason {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text);
+    max-width: 440px;
+    margin: 28px auto;
+    padding: 0 10px;
+    position: relative;
+  }
+  .result-reason::before,
+  .result-reason::after {
+    content: '"';
+    color: var(--accent);
+    font-size: 40px;
+    opacity: 0.4;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 30px;
+  }
+
+  .action-btn {
+    padding: 12px 24px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+  }
+  .action-btn.primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    border-color: transparent;
+    color: #fff;
+  }
+
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hidden { display: none !important; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 60px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 600px) {
+    .container { padding: 40px 18px 60px; }
+    .q-text { font-size: 19px; }
+    .opt { padding: 10px 18px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-gradient"></div>
+<div class="noise"></div>
+<div class="float-note">♪</div>
+<div class="float-note">♫</div>
+<div class="float-note">♩</div>
+<div class="float-note">♬</div>
+
+<div class="container">
+
+  <div class="hero">
+    <span class="badge">Powered by AI</span>
+    <h1>Mood Tune</h1>
+    <p class="subtitle">
+      ענה על 5 שאלות
+      <span class="eq"><span></span><span></span><span></span><span></span></span>
+      ותקבל את השיר המושלם לרגע שלך
+    </p>
+  </div>
+
+  <div id="quiz">
+
+    <div class="question">
+      <div class="q-num">01 — Mood</div>
+      <div class="q-text">איך אתה מרגיש עכשיו?</div>
+      <div class="options">
+        <button class="opt" data-q="mood" data-v="שמח ומאושר">😊 טוב</button>
+        <button class="opt" data-q="mood" data-v="ניטרלי">😐 סבבה</button>
+        <button class="opt" data-q="mood" data-v="עצוב">😔 לא משהו</button>
+        <button class="opt" data-q="mood" data-v="עצבני ותסכול">😤 עצבני</button>
+        <button class="opt" data-q="mood" data-v="מאוהב ורומנטי">💕 מאוהב</button>
+        <button class="opt" data-q="mood" data-v="נוסטלגי ומהורהר">🌙 נוסטלגי</button>
+      </div>
+    </div>
+
+    <div class="question">
+      <div class="q-num">02 — Energy</div>
+      <div class="q-text">איזו רמת אנרגיה?</div>
+      <div class="options">
+        <button class="opt" data-q="energy" data-v="גבוהה ובוערת">⚡ גבוהה</button>
+        <button class="opt" data-q="energy" data-v="בינונית ונעימה">🌿 רגועה</button>
+        <button class="opt" data-q="energy" data-v="נמוכה מאוד, עייפות">🛋️ אפס</button>
+      </div>
+    </div>
+
+    <div class="question">
+      <div class="q-num">03 — Vibe</div>
+      <div class="q-text">מה אתה רוצה להרגיש?</div>
+      <div class="options">
+        <button class="opt" data-q="vibe" data-v="להתעורר ולקבל מרץ">🎸 משהו שיעיר אותי</button>
+        <button class="opt" data-q="vibe" data-v="להירגע ולנשום">🌊 משהו שירגיע</button>
+        <button class="opt" data-q="vibe" data-v="לבכות ולשחרר רגש">😢 משהו שיבכה איתי</button>
+        <button class="opt" data-q="vibe" data-v="לפרוק ולהשתחרר">🔥 משהו שיפרק</button>
+        <button class="opt" data-q="vibe" data-v="להתרכז ולעבוד">🎯 לעבודה/ריכוז</button>
+        <button class="opt" data-q="vibe" data-v="לרקוד">💃 לרקוד</button>
+      </div>
+    </div>
+
+    <div class="question">
+      <div class="q-num">04 — Language</div>
+      <div class="q-text">שפה?</div>
+      <div class="options">
+        <button class="opt" data-q="lang" data-v="עברית">עברית</button>
+        <button class="opt" data-q="lang" data-v="אנגלית">אנגלית</button>
+        <button class="opt" data-q="lang" data-v="בלי הגבלה - תפתיע">✨ תפתיע אותי</button>
+      </div>
+    </div>
+
+    <div class="question">
+      <div class="q-num">05 — Genre</div>
+      <div class="q-text">סגנון?</div>
+      <div class="options">
+        <button class="opt" data-q="genre" data-v="רוק">🎸 רוק</button>
+        <button class="opt" data-q="genre" data-v="פופ">🎵 פופ</button>
+        <button class="opt" data-q="genre" data-v="היפ הופ או ראפ">🎤 היפ הופ</button>
+        <button class="opt" data-q="genre" data-v="אלקטרוני">🎹 אלקטרוני</button>
+        <button class="opt" data-q="genre" data-v="אקוסטי או פולק">🪕 אקוסטי</button>
+        <button class="opt" data-q="genre" data-v="ג'אז או סול">🎷 ג'אז/סול</button>
+        <button class="opt" data-q="genre" data-v="ים תיכוני או מזרחי">🌴 ים תיכוני</button>
+        <button class="opt" data-q="genre" data-v="כל סגנון">🎼 כל סגנון</button>
+      </div>
+    </div>
+
+    <button class="cta" id="cta" onclick="getSong()">מצא את השיר שלי ✨</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="loading-eq">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <p>מקשיב לרגש שלך<span class="dots">...</span></p>
+  </div>
+
+  <div class="result" id="result">
+    <div class="result-label">השיר של הרגע שלך</div>
+    <div class="result-song" id="songName"></div>
+    <div class="result-artist"><span id="artistName"></span> <span class="year" id="year"></span></div>
+    <div class="result-reason" id="reason"></div>
+    <div class="actions">
+      <a class="action-btn primary" id="ytLink" href="#" target="_blank" rel="noopener">▶ נגן ביוטיוב</a>
+      <button class="action-btn" onclick="reset()">🔄 שיר אחר</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    Made with <span style="color: var(--accent);">♥</span> for music lovers
+  </div>
+
+</div>
+
+<script>
+  // ⚠️ Change this to your Render server URL after deploy
+  const API_URL = 'https://mood-music-bot-5b2f.onrender.com/recommend';
+
+  const answers = {};
+
+  document.querySelectorAll('.opt').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const q = this.dataset.q;
+      document.querySelectorAll(`[data-q="${q}"]`).forEach(b => b.classList.remove('selected'));
+      this.classList.add('selected');
+      answers[q] = this.dataset.v;
+      checkReady();
+    });
+  });
+
+  function checkReady() {
+    const keys = ['mood','energy','vibe','lang','genre'];
+    const done = keys.every(k => answers[k]);
+    document.getElementById('cta').classList.toggle('show', done);
+  }
+
+  async function getSong() {
+    document.getElementById('quiz').classList.add('hidden');
+    document.getElementById('loading').classList.add('show');
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(answers)
+      });
+      if (!response.ok) throw new Error('Server error');
+      const data = await response.json();
+
+      document.getElementById('songName').textContent = data.song;
+      document.getElementById('artistName').textContent = data.artist;
+      document.getElementById('year').textContent = data.year ? `· ${data.year}` : '';
+      document.getElementById('reason').textContent = data.reason;
+      document.getElementById('ytLink').href =
+        'https://www.youtube.com/results?search_query=' + encodeURIComponent(data.youtube_query || (data.song + ' ' + data.artist));
+
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('result').classList.add('show');
+    } catch(e) {
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('quiz').classList.remove('hidden');
+      alert('משהו השתבש. נסה שוב.');
+    }
+  }
+
+  function reset() {
+    Object.keys(answers).forEach(k => delete answers[k]);
+    document.querySelectorAll('.opt').forEach(b => b.classList.remove('selected'));
+    document.getElementById('cta').classList.remove('show');
+    document.getElementById('result').classList.remove('show');
+    document.getElementById('quiz').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Animate the loading dots
+  setInterval(() => {
+    const dots = document.querySelector('.dots');
+    if (!dots) return;
+    const cur = dots.textContent.length;
+    dots.textContent = cur >= 3 ? '.' : dots.textContent + '.';
+  }, 400);
+</script>
+
+</body>
+</html>
